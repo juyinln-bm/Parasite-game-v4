@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寄生蟲跑台 - 分類特訓版</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding-bottom: 50px; }
+        h2 { color: #333; margin: 20px 0; }
+        
+        /* 區塊控制 */
+        .section { display: none; width: 100%; max-width: 600px; flex-direction: column; align-items: center; }
+        .active { display: flex; }
+
+        /* 登入區塊 */
+        .login-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 90%; }
+        .login-box input, .login-box select { padding: 12px; font-size: 18px; width: 80%; border: 2px solid #ddd; border-radius: 5px; margin-bottom: 20px; }
+        
+        /* 卡片區塊 */
+        .game-area { perspective: 600px; width: 300px; height: 450px; margin-bottom: 20px; }
+        .card { width: 100%; height: 100%; position: relative; transition: transform 0.6s; transform-style: preserve-3d; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 15px; }
+        .card.is-flipped { transform: rotateY(180deg); }
+        .card__face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; padding: 20px; box-sizing: border-box; }
+        .card__face--front { background: #ffffff; }
+        .card__face--back { background: #f8f9fa; transform: rotateY(180deg); text-align: center; }
+        .parasite-img { max-width: 100%; max-height: 200px; object-fit: contain; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        
+        /* 輸入與按鈕 */
+        input[type="text"] { padding: 10px; width: 80%; margin-bottom: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 16px; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background 0.3s; }
+        button:hover { background-color: #0056b3; }
+        .btn-start { font-size: 20px; padding: 15px 40px; background-color: #28a745; }
+        .btn-restart { background-color: #6c757d; margin-top: 10px; }
+
+        /* 結果顯示 */
+        .result-text { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .correct { color: #28a745; } .wrong { color: #dc3545; }
+        .answer-detail { font-size: 18px; color: #555; margin-bottom: 20px; }
+        .progress { margin-top: 10px; font-size: 14px; color: #666; }
+
+        /* 成績單與排行榜 */
+        #summary-section { width: 95%; max-width: 800px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .tab-buttons { display: flex; justify-content: center; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+        .tab-btn { background: none; color: #666; border-radius: 0; padding: 10px 20px; margin: 0 10px; border-bottom: 3px solid transparent; }
+        .tab-btn.active-tab { color: #007bff; border-bottom: 3px solid #007bff; }
+        
+        .list-container { display: none; }
+        .list-container.show { display: block; }
+
+        /* 個人成績列表 */
+        .summary-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 10px 0; }
+        .summary-item.item-wrong { background-color: #fff0f0; border-left: 5px solid #dc3545; padding-left: 10px; }
+        .summary-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 5px; margin-right: 15px; cursor: pointer; }
+        .summary-info { flex: 1; text-align: left; }
+        .status-badge { font-weight: bold; padding: 3px 8px; border-radius: 5px; font-size: 12px; }
+        .status-badge.ok { background-color: #d4edda; color: #155724; }
+        .status-badge.no { background-color: #f8d7da; color: #721c24; }
+
+        /* 排行榜表格 */
+        #leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        #leaderboard-table th, #leaderboard-table td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
+        #leaderboard-table th { background-color: #f8f9fa; color: #333; }
+        .rank-1 { color: #d4af37; font-weight: bold; font-size: 1.2em; }
+        .rank-2 { color: #c0c0c0; font-weight: bold; }
+        .rank-3 { color: #cd7f32; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="login-section" class="section active">
+        <h2>🔬 寄生蟲跑台特訓</h2>
+        <div class="login-box">
+            <p>請輸入暱稱</p>
+            <input type="text" id="nickname" placeholder="你的名字" maxlength="10">
+            
+            <p>選擇練習範圍</p>
+            <select id="category-select">
+                <option value="all">🔥 全部混合 (大亂鬥)</option>
+                <option value="線蟲">🪱 線蟲 </option>
+                <option value="絛蟲">🎗️ 絛蟲 還沒好! </option>
+                <option value="吸蟲">🍃 吸蟲 </option>
+                <option value="原蟲">🦠 原蟲 還沒好!</option>
+            </select>
+
+            <p>這次要練習幾題？</p>
+            <input type="number" id="question-limit" value="20" min="1" max="100" placeholder="輸入題數">
+            <br>
+            <button class="btn-start" onclick="startGame()">開始測驗</button>
+        </div>
+    </div>
+
+    <div id="game-section" class="section">
+        <h3 id="player-display">Player: </h3>
+        <div class="game-area">
+            <div class="card" id="flashcard">
+                <div class="card__face card__face--front">
+                    <div style="margin-bottom:10px; color:#666;">請輸入正確名稱：</div>
+                    <img src="" alt="題目圖片" class="parasite-img" id="q-image">
+                    <input type="text" id="user-input" placeholder="輸入學名或中文..." autocomplete="off">
+                    <button onclick="checkAnswer()">送出</button>
+                </div>
+                <div class="card__face card__face--back">
+                    <div id="result-title" class="result-text"></div>
+                    <div class="answer-detail">
+                        正確答案：<br>
+                        <strong id="correct-answer" style="color: #333; font-size: 22px;"></strong>
+                    </div>
+                    <button onclick="nextQuestion()" id="next-btn">下一題 ➡️</button>
+                </div>
+            </div>
+            <div class="progress" id="progress-text">準備開始...</div>
+        </div>
+    </div>
+
+    <div id="summary-section" class="section">
+        <div class="tab-buttons">
+            <button class="tab-btn active-tab" onclick="switchTab('personal')">📄 個人成績單</button>
+            <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 線上排行榜</button>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 id="final-score"></h3>
+            <div id="upload-status" style="font-size: 14px; color: #666;">正在上傳成績...</div>
+        </div>
+
+        <div id="personal-list" class="list-container show"></div>
+
+        <div id="leaderboard-list" class="list-container">
+            <table id="leaderboard-table">
+                <thead><tr><th>排名</th><th>暱稱</th><th>得分</th></tr></thead>
+                <tbody id="rank-body"><tr><td colspan="3">載入中...</td></tr></tbody>
+            </table>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="btn-restart" onclick="location.reload()">再玩一次 (登出)</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 🔧 設定區 🔧
+        // 1. 請填入你的 Google Script 網址
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxzdY2x1ZqsqhE-j_xgNUN0y297YaP4IbMyCb35zsJ7FAE61RGczbbSOC1u5GUi3ykmw/exec";
+        
+        // 2. 題目資料庫 (請在這裡填入你的 50 題)
+        // type 必須填寫：'線蟲', '絛蟲', '吸蟲', '原蟲'
+        // ans 支援多個答案：["中文", "學名"]
+        const database = [
+            { id: 1, type: '線蟲', img: "images/1.jpg", ans: ["Bursa copulatory of Angiostrongylus cantonensis", "male of Angiostrongylus cantonensis", "Spicule of Angiostrongylus cantonensis"] },
+            { id: 2, type: '線蟲', img: "images/2.jpg", ans: ["Female of Angiostrongylus cantonensis", "Posterior portion of Angiostrongylus cantonensis"] },
+            { id: 3, type: '線蟲', img: "images/3.jpg", ans: ["anterior end of anisakis spp."] },
+            { id: 4, type: '線蟲', img: "images/4.jpg", ans: ["terminal spine of anisakis spp."] },
+            { id: 5, type: '線蟲', img: "images/5.jpg", ans: ["Egg of Trichuris trichiura"] },
+            { id: 6, type: '線蟲', img: "images/6.jpg", ans: ["Cyst of Trichinella Spiralis"] },
+            { id: 7, type: '線蟲', img: "images/7.jpg", ans: ["adult male of trichiris trichiura"] },
+            { id: 8, type: '線蟲', img: "images/8.jpg", ans: ["adult female of trichiris trichiura"] },
+            { id: 9, type: '線蟲', img: "images/9.jpg", ans: ["Egg of Enterobius vermicularis"] },
+            { id: 10, type: '線蟲', img: "images/10.jpg", ans: ["Embryonated egg Egg of Enterobius vermicularis"] },
+            { id: 11, type: '線蟲', img: "images/11.jpg", ans: ["female of enterobius vermicularis", "female adult of enterobius vermicularis", "adult female of enterobius vermicularis"] },
+            { id: 12, type: '線蟲', img: "images/12.jpg", ans: ["fertilized egg of ascaris lumbricoides"] },
+            { id: 13, type: '線蟲', img: "images/13.jpg", ans: ["unfertilized egg of ascaris lumbricoides"] },
+            { id: 14, type: '線蟲', img: "images/14.jpg", ans: ["embryonated egg of ascaris lumbricoides"] },
+            { id: 15, type: '線蟲', img: "images/15.jpg", ans: ["embryonated egg of hookworm"] },
+            { id: 16, type: '線蟲', img: "images/16.jpg", ans: ["egg of hookworm"] },
+            { id: 17, type: '線蟲', img: "images/17.jpg", ans: ["Buccal capsule of Ancylostoma duodenale"] },
+            { id: 18, type: '線蟲', img: "images/18.jpg", ans: ["Buccal capsule of Necator americanus"] },
+            { id: 19, type: '線蟲', img: "images/19.jpg", ans: ["Filariform larva of strongyloides stercoralis"] },
+            { id: 20, type: '線蟲', img: "images/20.jpg", ans: ["Filariform Larva of Necator americanus"] },
+            { id: 21, type: '線蟲', img: "images/21.jpg", ans: ["Filariform Larva of Ancylostoma duodenale"] },
+            { id: 22, type: '線蟲', img: "images/22.jpg", ans: ["microfilaria of wuchereria bancrofti"] },
+            { id: 23, type: '線蟲', img: "images/23.jpg", ans: ["microfilaria of brugia malayi"] },
+            { id: 24, type: '吸蟲', img: "images/24.jpg", ans: ["Egg of Fasciolopsis Buski"] },
+            { id: 25, type: '吸蟲', img: "images/25.jpg", ans: ["Adult worm of Fasciolopsis buski"] },
+            { id: 26, type: '吸蟲', img: "images/26.jpg", ans: ["Adult worm of Metagonimus Yokogawai"] },
+            { id: 27, type: '吸蟲', img: "images/27.jpg", ans: ["Adult worm of Echinostoma revolutum"] },
+            { id: 28, type: '吸蟲', img: "images/28.jpg", ans: ["Egg of Paragonimus westermani"] },
+            { id: 29, type: '吸蟲', img: "images/29.jpg", ans: ["Adult worm of Paragonimus westermani"] },
+            { id: 30, type: '吸蟲', img: "images/30.jpg", ans: ["Section of liver infected with Paragonimus westermani"] },
+            { id: 31, type: '吸蟲', img: "images/31.jpg", ans: ["Adult worm of Fasciola hepatica"] },
+            { id: 32, type: '吸蟲', img: "images/32.jpg", ans: ["Adult worm of Clonorchis sinensis"] },
+            { id: 33, type: '吸蟲', img: "images/33.jpg", ans: ["Egg of Clonorchis sinensis"] },
+            { id: 34, type: '吸蟲', img: "images/34.jpg", ans: ["Egg of Schistosoma haematobium"] },
+            { id: 35, type: '吸蟲', img: "images/35.jpg", ans: ["Egg of Schistosoma mansoni"] },
+            { id: 36, type: '吸蟲', img: "images/36.jpg", ans: ["Egg of Schistosoma japonicum"] },
+            { id: 37, type: '吸蟲', img: "images/37.jpg", ans: ["Adult male of Schistosoma mansoni"] },
+            { id: 38, type: '吸蟲', img: "images/38.jpg", ans: ["Adult female of Schistosoma mansoni"] }
+            // ...請依照格式繼續新增...
+        ];
+        // ==========================================
+
+        let questions = [];
+        let userRecords = [];
+        let currentIdx = 0;
+        let score = 0;
+        let nickname = "";
+
+        // 洗牌功能
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 開始遊戲 (包含篩選題目)
+        function startGame() {
+            nickname = document.getElementById('nickname').value.trim();
+            if(!nickname) { alert("請先輸入暱稱！"); return; }
+
+            // 1. 取得使用者選的分類
+            const selectedType = document.getElementById('category-select').value;
+
+            // 2. 進行篩選
+            let pool = [];
+            if (selectedType === 'all') {
+                pool = [...database];
+            } else {
+                pool = database.filter(item => item.type === selectedType);
+            }
+
+            if (pool.length === 0) {
+                alert(`目前還沒有 "${selectedType}" 的題目喔！請先在資料庫新增。`);
+                return;
+            }
+
+            // 3. 取得自定義題數
+            let inputLimit = parseInt(document.getElementById('question-limit').value);
+            
+            // 防呆：如果輸入無效或小於1，預設為 20
+            if (isNaN(inputLimit) || inputLimit < 1) inputLimit = 20;
+            
+            // 如果輸入的題數大於池中題數，就取池中題數 (避免錯誤)
+            const finalLimit = Math.min(inputLimit, pool.length);
+
+            // 4. 畫面切換
+            document.getElementById('login-section').classList.remove('active');
+            document.getElementById('game-section').classList.add('active');
+            document.getElementById('player-display').innerText = `Player: ${nickname} (${selectedType}) - 共 ${finalLimit} 題`;
+
+            // 5. 洗牌並切題
+            questions = shuffle(pool).slice(0, finalLimit); 
+
+            // 重置變數
+            userRecords = [];
+            currentIdx = 0;
+            score = 0;
+            loadCard();
+        }
+
+        // 載入卡片
+        function loadCard() {
+            const q = questions[currentIdx];
+            const imgEl = document.getElementById('q-image');
+            imgEl.src = q.img;
+            imgEl.onerror = function() { this.alt = "找不到圖片"; };
+            
+            document.getElementById('user-input').value = "";
+            document.getElementById('progress-text').innerText = `進度：${currentIdx + 1} / ${questions.length}`;
+            
+            document.getElementById('flashcard').classList.remove('is-flipped');
+            setTimeout(() => document.getElementById('user-input').focus(), 300);
+        }
+
+        // 檢查答案
+        function checkAnswer() {
+            const userVal = document.getElementById('user-input').value.trim().toLowerCase();
+            let correctVals = questions[currentIdx].ans;
+            if (!Array.isArray(correctVals)) correctVals = [correctVals];
+            
+            const isCorrect = correctVals.some(ans => ans.toLowerCase() === userVal);
+            
+            userRecords.push({
+                question: questions[currentIdx],
+                userAnswer: userVal,
+                isCorrect: isCorrect,
+                correctAnswers: correctVals[0]
+            });
+
+            const resultTitle = document.getElementById('result-title');
+            if (isCorrect) {
+                resultTitle.innerHTML = "✅ 答對了！";
+                resultTitle.className = "result-text correct";
+                score++;
+            } else {
+                resultTitle.innerHTML = "❌ 答錯了！";
+                resultTitle.className = "result-text wrong";
+            }
+
+            document.getElementById('correct-answer').innerText = correctVals[0];
+            document.getElementById('flashcard').classList.add('is-flipped');
+            
+            const nextBtn = document.getElementById('next-btn');
+            nextBtn.innerText = (currentIdx >= questions.length - 1) ? "看成績單 🏁" : "下一題 ➡️";
+            nextBtn.focus();
+        }
+
+        // 下一題或結束
+        function nextQuestion() {
+            currentIdx++;
+            if (currentIdx < questions.length) {
+                document.getElementById('flashcard').classList.remove('is-flipped');
+                setTimeout(loadCard, 300);
+            } else {
+                endGame();
+            }
+        }
+
+        // 遊戲結束
+        function endGame() {
+            document.getElementById('game-section').classList.remove('active');
+            document.getElementById('summary-section').classList.add('active');
+            
+            document.getElementById('final-score').innerText = `${nickname} 的得分：${score} / ${questions.length}`;
+            renderPersonalList();
+            uploadScoreAndGetLeaderboard();
+        }
+
+        // 產生個人成績列表
+        function renderPersonalList() {
+            const listDiv = document.getElementById('personal-list');
+            listDiv.innerHTML = "";
+            userRecords.forEach((record, index) => {
+                const item = document.createElement('div');
+                item.className = record.isCorrect ? "summary-item" : "summary-item item-wrong";
+                item.innerHTML = `
+                    <img src="${record.question.img}" class="summary-thumb" onclick="window.open(this.src)">
+                    <div class="summary-info">
+                        <strong>第 ${index + 1} 題：${record.correctAnswers}</strong><br>
+                        <span style="color:#666">你的回答：${record.userAnswer || "(空白)"}</span>
+                    </div>
+                    <div class="status-badge ${record.isCorrect ? 'ok' : 'no'}">${record.isCorrect ? '正確' : '錯誤'}</div>
+                `;
+                listDiv.appendChild(item);
+            });
+        }
+
+        // 雲端連線
+        function uploadScoreAndGetLeaderboard() {
+            const statusEl = document.getElementById('upload-status');
+            
+            if (GOOGLE_SCRIPT_URL.includes("你的ID")) {
+                statusEl.innerText = "⚠️ 未設定 Google Script 網址，無法上傳分數。";
+                return;
+            }
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: nickname, score: score })
+            }).then(() => {
+                statusEl.innerText = "分數上傳成功！正在更新排行榜...";
+                return fetch(GOOGLE_SCRIPT_URL);
+            }).then(response => response.json())
+            .then(data => {
+                renderLeaderboard(data);
+                statusEl.innerText = "排行榜已更新";
+            }).catch(error => {
+                console.error("Error:", error);
+                statusEl.innerText = "連線失敗，請檢查網路或腳本設定";
+            });
+        }
+
+        // 產生排行榜
+        function renderLeaderboard(data) {
+            const tbody = document.getElementById('rank-body');
+            tbody.innerHTML = "";
+            data.forEach((row, index) => {
+                let rankClass = "";
+                if(index === 0) rankClass = "rank-1";
+                if(index === 1) rankClass = "rank-2";
+                if(index === 2) rankClass = "rank-3";
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="${rankClass}">#${index + 1}</td><td style="font-weight:bold">${row.name}</td><td>${row.score}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 頁籤切換
+        function switchTab(tabName) {
+            document.querySelectorAll('.list-container').forEach(el => el.classList.remove('show'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active-tab'));
+            
+            if(tabName === 'personal') {
+                document.getElementById('personal-list').classList.add('show');
+                document.querySelector('button[onclick="switchTab(\'personal\')"]').classList.add('active-tab');
+            } else {
+                document.getElementById('leaderboard-list').classList.add('show');
+                document.querySelector('button[onclick="switchTab(\'leaderboard\')"]').classList.add('active-tab');
+            }
+        }
+
+        // Enter 鍵支援
+        document.getElementById('user-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') checkAnswer(); });
+        document.getElementById('nickname').addEventListener('keypress', (e) => { if(e.key === 'Enter') startGame(); });
+
+    </script>
+</body>
+</html>
